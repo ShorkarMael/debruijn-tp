@@ -64,21 +64,55 @@ def get_arguments():
                         help="Output contigs in fasta file")
     return parser.parse_args()
 
-
 def read_fastq(fastq_file):
-    pass
+    i = 0
+    for lines in fastq_file:
+        if i % 2 != 0:
+            line = lines.strip('\n')
+            yield (line)
+        i += 1
 
 
-def cut_kmer(read, kmer_size):
-    pass
+def cut_kmer(sequence, k):
+    for x in range(len(sequence) + 1 - k):
+        kmer = sequence[x:x + k]
+        yield (kmer)
 
 
-def build_kmer_dict(fastq_file, kmer_size):
-    pass
+def build_kmer_dict(fastq_file, k):
+    kmer_dict = dict()
+    for sequence in read_fastq(fastq_file):
+        for kmer in cut_kmer(sequence, k):
+            kmer_dict[kmer] = kmer_dict.get(kmer, 0) + 1
+    return kmer_dict
 
 
 def build_graph(kmer_dict):
-    pass
+    graph = nx.Graph()
+    for kmer, w in kmer_dict.items():
+        k = len(kmer)
+        graph.add_edge(kmer[1:k], kmer[0:k - 1], weight=w)
+    return graph
+
+
+def draw_graph(graph, graphimg_file):
+    """Draw the graph
+    """
+    fig, ax = plt.subplots()
+    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] > 3]
+    # print(elarge)
+    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] <= 3]
+    # print(elarge)
+    # Draw the graph with networkx
+    # pos=nx.spring_layout(graph)
+    pos = nx.random_layout(graph)
+    nx.draw_networkx_nodes(graph, pos, node_size=6)
+    nx.draw_networkx_edges(graph, pos, edgelist=elarge, width=6)
+    nx.draw_networkx_edges(graph, pos, edgelist=esmall, width=6, alpha=0.5,
+                           edge_color='b', style='dashed')
+    # nx.draw_networkx(graph, pos, node_size=10, with_labels=False)
+    # save image
+    plt.savefig(graphimg_file)
 
 
 def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
@@ -128,6 +162,12 @@ def main():
     """
     # Get arguments
     args = get_arguments()
+    k = args.kmer_size
+    fastq_file = open(args.fastq_file, 'r')
+    tmp = 0
+    graph = build_graph(build_kmer_dict(fastq_file, k))
+    print(graph.edges(data=True))
+    fastq_file.close()
 
 if __name__ == '__main__':
     main()
