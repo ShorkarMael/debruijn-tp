@@ -17,12 +17,13 @@ import argparse
 import os
 import sys
 import networkx as nx
-import matplotlib as plt
+import matplotlib
 from operator import itemgetter
 import random
 random.seed(9001)
 from random import randint
 import statistics
+import matplotlib.pyplot as plt
 
 __author__ = "Your Name"
 __copyright__ = "Universite Paris Diderot"
@@ -66,26 +67,24 @@ def get_arguments():
 
 def read_fastq(fastq_file):
     fastq = open(fastq_file, 'r')
-    i = 0
     for lines in fastq:
         if lines[0] == 'A' or lines[0] == 'T' or lines[0] == 'C' or lines[0] == 'G':
             line = lines.strip('\n')
-            print(line)
-            yield (line)
-        i += 1
+            #print(line)
+            yield line
     fastq.close()
 
 
 def cut_kmer(sequence, k):
     for x in range(len(sequence) + 1 - k):
         kmer = sequence[x:x + k]
-        yield (kmer)
+        yield kmer
 
 
 def build_kmer_dict(fastq_file, k):
     kmer_dict = dict()
     for sequence in read_fastq(fastq_file):
-        print(sequence)
+        #print(sequence)
         for kmer in cut_kmer(sequence, k):
             kmer_dict[kmer] = kmer_dict.get(kmer, 0) + 1
     return kmer_dict
@@ -96,12 +95,13 @@ def build_graph(kmer_dict):
     for kmer, w in kmer_dict.items():
         prev_weight_int = 0
         k = len(kmer)
-        print(kmer[0:k-1], kmer[1:k], w)
+        #print(kmer[0:k-1], kmer[1:k], w)
         if graph.has_edge(kmer[0:k-1], kmer[1:k]):
             prev_weight = graph.get_edge_data(kmer[0:k-1], kmer[1:k], 'weight')
             prev_weight_int = prev_weight['weight']
         graph.add_edge(kmer[0:k-1], kmer[1:k], weight=w + prev_weight_int)
-        print(graph.edges(data=True))
+        #print(graph.edges(data=True))
+        #draw_graph(graph, 'test.jpg')
     return graph
 
 
@@ -152,13 +152,33 @@ def solve_out_tips(graph, ending_nodes):
     pass
 
 def get_starting_nodes(graph):
-    pass
+    start_nodes = list()
+    for node in graph.nodes:
+        if nx.ancestors(graph, node) == set():
+            start_nodes.append(node)
+            #print('start : {}'.format(node))
+    return start_nodes
+
 
 def get_sink_nodes(graph):
-    pass
+    sink_nodes = list()
+    for node in graph.nodes:
+        if nx.descendants(graph, node) == set():
+            sink_nodes.append(node)
+            #print('sink : {}'.format(node))
+    return sink_nodes
 
 def get_contigs(graph, starting_nodes, ending_nodes):
-    pass
+    list_contigs = []
+    for starting_node in starting_nodes:
+        for ending_node in ending_nodes:
+            for path in nx.all_simple_paths(graph, starting_node, ending_node):
+                contig = [p[:-1] for p in path]
+                contig.append(ending_node[-1])
+                contig = ''.join(contig)
+                list_contigs.append((contig,len(contig)))
+    return list_contigs
+
 
 def save_contigs(contigs_list, output_file):
     pass
@@ -175,8 +195,10 @@ def main():
     k = args.kmer_size
     tmp = 0
     graph = build_graph(build_kmer_dict(args.fastq_file, k))
-    print(graph.edges(data=True))
-    draw_graph(graph, 'test.jpg')
-    
+    #print(graph.edges(data=True))
+    #draw_graph(graph, 'test.jpg')
+    get_starting_nodes(graph)
+    get_sink_nodes(graph)
+
 if __name__ == '__main__':
     main()
