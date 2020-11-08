@@ -20,6 +20,7 @@ import networkx as nx
 import matplotlib
 from operator import itemgetter
 import random
+
 random.seed(9001)
 from random import randint
 import statistics
@@ -33,6 +34,7 @@ __version__ = "1.0.0"
 __maintainer__ = "Your Name"
 __email__ = "your@email.fr"
 __status__ = "Developpement"
+
 
 def isfile(path):
     """Check if path is an existing file.
@@ -54,7 +56,7 @@ def get_arguments():
     """
     # Parsing arguments
     parser = argparse.ArgumentParser(description=__doc__, usage=
-                                     "{0} -h"
+    "{0} -h"
                                      .format(sys.argv[0]))
     parser.add_argument('-i', dest='fastq_file', type=isfile,
                         required=True, help="Fastq file")
@@ -65,12 +67,13 @@ def get_arguments():
                         help="Output contigs in fasta file")
     return parser.parse_args()
 
+
 def read_fastq(fastq_file):
     fastq = open(fastq_file, 'r')
     for lines in fastq:
         if lines[0] == 'A' or lines[0] == 'T' or lines[0] == 'C' or lines[0] == 'G':
             line = lines.strip('\n')
-            #print(line)
+            # print(line)
             yield line
     fastq.close()
 
@@ -84,7 +87,7 @@ def cut_kmer(sequence, k):
 def build_kmer_dict(fastq_file, k):
     kmer_dict = dict()
     for sequence in read_fastq(fastq_file):
-        #print(sequence)
+        # print(sequence)
         for kmer in cut_kmer(sequence, k):
             kmer_dict[kmer] = kmer_dict.get(kmer, 0) + 1
     return kmer_dict
@@ -95,13 +98,13 @@ def build_graph(kmer_dict):
     for kmer, w in kmer_dict.items():
         prev_weight_int = 0
         k = len(kmer)
-        #print(kmer[0:k-1], kmer[1:k], w)
-        if graph.has_edge(kmer[0:k-1], kmer[1:k]):
-            prev_weight = graph.get_edge_data(kmer[0:k-1], kmer[1:k], 'weight')
+        # print(kmer[0:k-1], kmer[1:k], w)
+        if graph.has_edge(kmer[0:k - 1], kmer[1:k]):
+            prev_weight = graph.get_edge_data(kmer[0:k - 1], kmer[1:k], 'weight')
             prev_weight_int = prev_weight['weight']
-        graph.add_edge(kmer[0:k-1], kmer[1:k], weight=w + prev_weight_int)
-        #print(graph.edges(data=True))
-        #draw_graph(graph, 'test.jpg')
+        graph.add_edge(kmer[0:k - 1], kmer[1:k], weight=w + prev_weight_int)
+        # print(graph.edges(data=True))
+        # draw_graph(graph, 'test.jpg')
     return graph
 
 
@@ -125,38 +128,57 @@ def draw_graph(graph, graphimg_file):
     plt.savefig(graphimg_file)
 
 
-def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
-    pass
-
 def std(data):
-    pass
+    return statistics.stdev(data)
 
 
-def select_best_path(graph, path_list, path_length, weight_avg_list, 
+def select_best_path(graph, path_list, path_length, weight_avg_list,
                      delete_entry_node=False, delete_sink_node=False):
     pass
 
+
 def path_average_weight(graph, path):
-    pass
+    list_weight = []
+    for i, j, edge in graph.subgraph(path).edges(data=True):
+        list_weight.append(edge['weight'])
+    mean = statistics.mean(list_weight)
+    return mean
+
+
+def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
+    for path in path_list:
+        if delete_entry_node and delete_sink_node == False:
+            graph.remove_nodes_from(path[:-1])
+        elif delete_entry_node and delete_sink_node:
+            graph.remove_nodes_from(path)
+        elif delete_entry_node == False and delete_sink_node:
+            graph.remove_nodes_from(path[1:])
+        elif delete_entry_node == False and delete_sink_node == False:
+            graph.remove_nodes_from(path[1:-1])
+    return graph
 
 def solve_bubble(graph, ancestor_node, descendant_node):
     pass
 
+
 def simplify_bubbles(graph):
     pass
+
 
 def solve_entry_tips(graph, starting_nodes):
     pass
 
+
 def solve_out_tips(graph, ending_nodes):
     pass
+
 
 def get_starting_nodes(graph):
     start_nodes = list()
     for node in graph.nodes:
         if nx.ancestors(graph, node) == set():
             start_nodes.append(node)
-            #print('start : {}'.format(node))
+            # print('start : {}'.format(node))
     return start_nodes
 
 
@@ -165,8 +187,9 @@ def get_sink_nodes(graph):
     for node in graph.nodes:
         if nx.descendants(graph, node) == set():
             sink_nodes.append(node)
-            #print('sink : {}'.format(node))
+            # print('sink : {}'.format(node))
     return sink_nodes
+
 
 def get_contigs(graph, starting_nodes, ending_nodes):
     list_contigs = []
@@ -176,16 +199,27 @@ def get_contigs(graph, starting_nodes, ending_nodes):
                 contig = [p[:-1] for p in path]
                 contig.append(ending_node[-1])
                 contig = ''.join(contig)
-                list_contigs.append((contig,len(contig)))
+                list_contigs.append((contig, len(contig)))
     return list_contigs
 
 
 def save_contigs(contigs_list, output_file):
-    pass
+    with open(output_file, 'w+') as f:
+        for i in range(len(contigs_list)):
+            f.write('>contig_{} len={}\n'.format(i, contigs_list[i][1]))
+            f.write(fill(contigs_list[i][0]))
+            f.write('\n')
+    f.close()
 
-#==============================================================
+
+def fill(text, width=80):
+    """Split text with a line return to respect fasta format"""
+    return os.linesep.join(text[i:i + width] for i in range(0, len(text), width))
+
+
+# ==============================================================
 # Main program
-#==============================================================
+# ==============================================================
 def main():
     """
     Main program function
@@ -195,10 +229,14 @@ def main():
     k = args.kmer_size
     tmp = 0
     graph = build_graph(build_kmer_dict(args.fastq_file, k))
-    #print(graph.edges(data=True))
-    #draw_graph(graph, 'test.jpg')
-    get_starting_nodes(graph)
-    get_sink_nodes(graph)
+    # print(graph.edges(data=True))
+    # draw_graph(graph, 'test.jpg')
+    start = get_starting_nodes(graph)
+    end = get_sink_nodes(graph)
+    list_contig = get_contigs(graph,start,end)
+    save_contigs(list_contig,'test_save.fasta')
+    remove_paths(graph, ['TCAGAGCTCTAGAGTTGGTT','CAGAGCTCTAGAGTTGGTTC'], True, False)
+
 
 if __name__ == '__main__':
     main()
