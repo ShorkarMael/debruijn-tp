@@ -237,7 +237,7 @@ def solve_out_tips(graph, ending_nodes):
     # First create a list of nodes with more than 1 ancestor
     target = []
     for node in graph.nodes():
-        ancestor = list(graph.descendants(node))
+        ancestor = list(graph.successors(node))
         if len(ancestor) > 1:
             target.append(node)
     # If no predecessors no modification
@@ -246,11 +246,14 @@ def solve_out_tips(graph, ending_nodes):
     list_paths = []
     weight_avg_list = []
     path_length = []
-    for i in range(len(ending_nodes)):
-        list_paths.append(list(nx.all_simple_paths(graph, ending_nodes[i], target[0])))
-        list_paths[i] = list_paths[i][0]
-        weight_avg_list.append(path_average_weight(graph, list_paths[i]))
-        path_length.append(len(list_paths[i]))
+    for node in graph.nodes():
+        ancestor = list(graph.successors(node))
+        if len(ancestor) > 1:
+            for i in range(len(ending_nodes)):
+                    list_paths.append(list(nx.all_simple_paths(graph, target[0], ending_nodes[i])))
+                    list_paths[i] = list_paths[i][0]
+                    weight_avg_list.append(path_average_weight(graph, list_paths[i]))
+                    path_length.append(len(list_paths[i]))
     # Best path at the end
     graph = select_best_path(graph, list_paths, path_length, weight_avg_list, False, True)
     return graph
@@ -316,10 +319,14 @@ def main():
     # draw_graph(graph, 'test.jpg')
     start = get_starting_nodes(graph)
     end = get_sink_nodes(graph)
-    list_contig = get_contigs(graph,start,end)
-    save_contigs(list_contig,'test_save.fasta')
+    graph = simplify_bubbles(graph)
+    graph = solve_entry_tips(graph, get_starting_nodes(graph))
+    graph = solve_out_tips(graph, get_sink_nodes(graph))
+    #list_contig = get_contigs(graph,start,end)
+    #save_contigs(list_contig,'test_save.fasta')
     removed_graph = remove_paths(graph, ['TCAGAGCTCTAGAGTTGGTT','TCAATCACACCCACCACGTG'], True, False).edges(data=True)
-
+    list_contigs = get_contigs(graph, start, end)
+    save_contigs(list_contigs, 'final_save.fasta')
 
 if __name__ == '__main__':
     main()
