@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 import networkx as nx
-import matplotlib
+import matplotlib as plt
 from operator import itemgetter
 import random
 random.seed(9001)
@@ -65,12 +65,15 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fastq(fastq_file):
+    fastq = open(fastq_file, 'r')
     i = 0
-    for lines in fastq_file:
-        if i % 2 != 0:
+    for lines in fastq:
+        if lines[0] == 'A' or lines[0] == 'T' or lines[0] == 'C' or lines[0] == 'G':
             line = lines.strip('\n')
+            print(line)
             yield (line)
         i += 1
+    fastq.close()
 
 
 def cut_kmer(sequence, k):
@@ -82,16 +85,23 @@ def cut_kmer(sequence, k):
 def build_kmer_dict(fastq_file, k):
     kmer_dict = dict()
     for sequence in read_fastq(fastq_file):
+        print(sequence)
         for kmer in cut_kmer(sequence, k):
             kmer_dict[kmer] = kmer_dict.get(kmer, 0) + 1
     return kmer_dict
 
 
 def build_graph(kmer_dict):
-    graph = nx.Graph()
+    graph = nx.DiGraph()
     for kmer, w in kmer_dict.items():
+        prev_weight_int = 0
         k = len(kmer)
-        graph.add_edge(kmer[1:k], kmer[0:k - 1], weight=w)
+        print(kmer[0:k-1], kmer[1:k], w)
+        if graph.has_edge(kmer[0:k-1], kmer[1:k]):
+            prev_weight = graph.get_edge_data(kmer[0:k-1], kmer[1:k], 'weight')
+            prev_weight_int = prev_weight['weight']
+        graph.add_edge(kmer[0:k-1], kmer[1:k], weight=w + prev_weight_int)
+        print(graph.edges(data=True))
     return graph
 
 
@@ -163,11 +173,10 @@ def main():
     # Get arguments
     args = get_arguments()
     k = args.kmer_size
-    fastq_file = open(args.fastq_file, 'r')
     tmp = 0
-    graph = build_graph(build_kmer_dict(fastq_file, k))
+    graph = build_graph(build_kmer_dict(args.fastq_file, k))
     print(graph.edges(data=True))
-    fastq_file.close()
-
+    draw_graph(graph, 'test.jpg')
+    
 if __name__ == '__main__':
     main()
